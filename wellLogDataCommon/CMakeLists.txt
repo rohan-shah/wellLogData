@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.1)
-set(CppFiles context.cpp)
-set(HeaderFiles context.h)
+set(CppFiles context.cpp basicFilter.cpp)
+set(HeaderFiles context.h basicFilter.h)
 
 add_library(wellLogDataCommon STATIC ${CppFiles} ${HeaderFiles})
 target_include_directories(wellLogDataCommon PUBLIC ${Boost_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/wellLogDataCommon ${IGRAPH_INCLUDES} ${boostGraphExt_include})
-target_link_libraries(wellLogDataCommon PUBLIC ${Boost_LIBRARIES} mpfr sampling)
+target_link_libraries(wellLogDataCommon PUBLIC ${Boost_LIBRARIES} mpfr sampling aliasMethod)
 
 target_compile_definitions(wellLogDataCommon PUBLIC BOOST_ALL_NO_LIB BOOST_ALL_DYN_LINK)
 if(WIN32)
