@@ -47,6 +47,9 @@ namespace wellLogData
 			}
 			particles.push_back(particle);
 		}
+		std::vector<double> resamplingProbabilities;
+		std::vector<std::ptrdiff_t> aliasTmp1, aliasTmp2;
+		std::vector<std::pair<double, std::ptrdiff_t> > aliasTmp3;
 		for(std::size_t time = 1; time < data.size(); time++)
 		{
 			//For each particle, make four successors
@@ -116,7 +119,28 @@ namespace wellLogData
 							childParticle.weight *= (1/sqrt(childParticle.variance)) * std::exp(-0.5 * tmp * tmp / childParticle.variance) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 						}
 					}
+					childParticles.push_back(childParticle);
 				}
+			}
+			resamplingProbabilities.clear();
+			double sum = 0, outlierProbabilitiesSum = 0, changeProbabilitiesSum = 0;
+			for(std::vector<basicFilterParticle>::iterator i = childParticles.begin(); i != childParticles.end(); i++)
+			{
+				resamplingProbabilities.push_back(i->weight);
+				sum += i->weight;
+				if(i->isChange) changeProbabilitiesSum += i->weight;
+				if(i->isOutlier) outlierProbabilitiesSum += i->weight;
+			}
+			args.changeProbabilities.push_back(changeProbabilitiesSum / sum);
+			args.outlierProbabilities.push_back(outlierProbabilitiesSum / sum);
+
+			aliasMethod::aliasMethod resamplingObject(resamplingProbabilities, sum, aliasTmp1, aliasTmp2, aliasTmp3);
+			particles.clear();
+			for(std::size_t i = 0; i < args.nParticles; i++)
+			{
+				std::size_t index = resamplingObject(args.randomSource);
+				particles.push_back(childParticles[index]);
+				particles.back().weight = sum / args.nParticles;
 			}
 		}
 	}

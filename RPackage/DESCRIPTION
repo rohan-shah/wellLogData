@@ -1,0 +1,15 @@
+Package: wellLogData
+Type: Package
+Title: Monte Carlo methods for the well log data in Fearnhead and Clifford (2003)
+Version: 0.1
+Date: 2015-05-14
+Author: Rohan Shah
+Maintainer: Rohan Shah <cran@bookshah.com>
+Description: This package provides Monte Carlo methods for estimating the change points in well-log data. Most of the methods are taken from Fearnhead and Clifford (2003)
+License: GPL v3
+LazyData: No
+Depends: Rmpfr
+Collate:
+   'Rcpp_exceptions.R'
+   'onLoad.R'
+   'basicFilter.R'
