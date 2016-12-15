@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
-set(CppFiles register.cpp)
-set(HeaderFiles)
+set(CppFiles register.cpp basicFilterRPackage.cpp)
+set(HeaderFiles basicFilterRPackage.h)
 add_library(wellLogDataRPackage SHARED ${CppFiles} ${HeaderFiles})
 target_link_libraries(wellLogDataRPackage PUBLIC wellLogDataCommon Rcpp)
 set_target_properties(wellLogDataRPackage PROPERTIES OUTPUT_NAME "wellLogData")

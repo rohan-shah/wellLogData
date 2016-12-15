@@ -32,6 +32,7 @@ namespace wellLogData
 		{
 			throw std::runtime_error("Input nu must be a number");
 		}
+		nu = args.nu;
 		if(changeProb != changeProb || changeProb <= 0 || changeProb >= 1)
 		{
 			throw std::runtime_error("Input changeProb must be a probability");
@@ -51,11 +52,15 @@ namespace wellLogData
 	}
 	double context::getNu() const
 	{
-		return mu;
+		return nu;
 	}
 	double context::getOutlierProbability() const
 	{
 		return outlierProb;
+	}
+	double context::getChangeProbability() const
+	{
+		return changeProb;
 	}
 	double context::getOutlierClusterProbability() const
 	{

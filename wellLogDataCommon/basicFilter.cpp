@@ -85,14 +85,24 @@ namespace wellLogData
 							childParticle.weight *= (1 - contextObj.getOutlierProbability());
 						}
 					}
-					if(childParticle.isChange)
+					if(childParticle.isChange && childParticle.isOutlier)
+					{
+						childParticle.timeLastChange = time;
+						childParticle.weight *= contextObj.getChangeProbability();
+						childParticle.mean = contextObj.getMu();
+						childParticle.variance = contextObj.getSigmaSquared();
+						double tmp = (data[time] - contextObj.getNu());
+						childParticle.weight *= (1/contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+					}
+					else if(childParticle.isChange)
 					{
 						childParticle.timeLastChange = time;
 						childParticle.weight *= contextObj.getChangeProbability();
 						childParticle.mean = contextObj.getMu();
 						childParticle.variance = contextObj.getSigmaSquared();
 						double tmp = (data[time] - childParticle.mean);
-						childParticle.weight *= (1/contextObj.getSigma()) * std::exp(-0.5 * tmp * tmp / childParticle.variance) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+						double obsSd = sqrt(contextObj.getSigmaSquared() + contextObj.getTau1Squared());
+						childParticle.weight *= (1/obsSd) * std::exp(-0.5 * tmp * tmp / (childParticle.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 					}
 					else 
 					{
@@ -105,7 +115,7 @@ namespace wellLogData
 						}
 						else
 						{
-							childParticle.mean = (currentParticle.mean / currentParticle.variance) + (data[time-1] / contextObj.getTau1Squared()) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+							childParticle.mean = ((currentParticle.mean / currentParticle.variance) + (data[time-1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
 							childParticle.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
 						}
 						if(childParticle.isOutlier)
@@ -116,7 +126,8 @@ namespace wellLogData
 						else
 						{
 							double tmp = data[time] - childParticle.mean;
-							childParticle.weight *= (1/sqrt(childParticle.variance)) * std::exp(-0.5 * tmp * tmp / childParticle.variance) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+							double obsSd = sqrt(childParticle.variance + contextObj.getTau1Squared());
+							childParticle.weight *= (1/sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticle.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 						}
 					}
 					childParticles.push_back(childParticle);
@@ -140,7 +151,8 @@ namespace wellLogData
 			{
 				std::size_t index = resamplingObject(args.randomSource);
 				particles.push_back(childParticles[index]);
-				particles.back().weight = sum / args.nParticles;
+				particles.back().weight = 1;
+				//particles.back().weight = sum / args.nParticles;
 			}
 		}
 	}
