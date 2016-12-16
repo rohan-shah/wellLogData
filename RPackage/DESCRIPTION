@@ -13,3 +13,4 @@ Collate:
    'Rcpp_exceptions.R'
    'onLoad.R'
    'basicFilter.R'
+   'fearnheadFilter.R'

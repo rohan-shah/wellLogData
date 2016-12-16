@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
-set(CppFiles context.cpp basicFilter.cpp)
-set(HeaderFiles context.h basicFilter.h)
+set(CppFiles context.cpp basicFilter.cpp fearnheadFilter.cpp fearnheadGetKappa.cpp)
+set(HeaderFiles context.h basicFilter.h fearnheadFilter.h fearnheadGetKappa.h)
 
 add_library(wellLogDataCommon STATIC ${CppFiles} ${HeaderFiles})
 target_include_directories(wellLogDataCommon PUBLIC ${Boost_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/wellLogDataCommon ${IGRAPH_INCLUDES} ${boostGraphExt_include})
