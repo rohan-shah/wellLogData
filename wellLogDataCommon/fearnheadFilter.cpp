@@ -1,6 +1,7 @@
 #include "fearnheadFilter.h"
 #include "fearnheadGetKappa.h"
 #include <boost/random/bernoulli_distribution.hpp>
+#include "systematicSampling.h"
 namespace wellLogData
 {
 	struct fearnheadFilterParticle
@@ -28,6 +29,9 @@ namespace wellLogData
 		args.changeProbabilities.clear();
 		args.outlierProbabilities.clear();
 		boost::random::bernoulli_distribution<> isOutlierDist(contextObj.getOutlierProbability()), isChangeDist(contextObj.getChangeProbability());
+
+		std::vector<double> systematicWeights;
+		std::vector<int> systematicIndices;
 
 		//Initial simulation
 		std::vector<fearnheadFilterParticle> particles, childParticles;
@@ -156,16 +160,45 @@ namespace wellLogData
 			std::sort(childParticles.begin(), childParticles.end(), particleWeightSorter);
 			int A;
 			double B;
-			double kappa = fearnheadGetKappa(childParticles.size(), [&childParticles](std::size_t i){ return childParticles[i].weight;}, args.randomSource, args.nParticles, A, B);
+			fearnheadGetKappa(childParticles.size(), [&childParticles](std::size_t i){ return childParticles[i].weight;}, args.randomSource, args.nParticles, A, B);
 			double c = ((int)args.nParticles - A) / B;
-			double checkSum = 0;
+#ifndef NDEBUG
+			double checkSum = 0, checkSum2 = 0;
 			for(std::vector<fearnheadFilterParticle>::iterator i = childParticles.begin(); i != childParticles.end(); i++)
 			{
 				checkSum += std::min(i->weight * c, 1.0);
+				checkSum2 += i->weight;
 			}
 			if(fabs(checkSum - args.nParticles) > 1e-6)
 			{
 				throw std::runtime_error("Internal error");
+			}
+#endif
+			double cInverse = 1/c;
+			//Work out where "set 1" starts
+			int startOfTakeAllStrata = 0;
+			while(startOfTakeAllStrata < (int)childParticles.size() && childParticles[startOfTakeAllStrata].weight < cInverse) startOfTakeAllStrata++;
+			int takeAllStrataSize = (int)childParticles.size() - startOfTakeAllStrata;
+
+			//The rest of the particles form "set 2"
+			systematicWeights.clear();
+			double setTwoSum = 0;
+			for(int i = 0; i < startOfTakeAllStrata; i++)
+			{
+				systematicWeights.push_back(childParticles[i].weight);
+				setTwoSum += childParticles[i].weight;
+			}
+			systematicIndices.clear();
+			sampling::systematicSamplingDouble(systematicWeights, setTwoSum / (args.nParticles - takeAllStrataSize), systematicIndices, args.randomSource);
+			particles.clear();
+			for(int i = 0; i < (int)systematicIndices.size(); i++)
+			{
+				particles.push_back(childParticles[systematicIndices[i]]);
+				particles.back().weight = cInverse;
+			}
+			for(int i = startOfTakeAllStrata; i < (int)systematicIndices.size(); i++)
+			{
+				particles.push_back(childParticles[i]);
 			}
 		}
 	}

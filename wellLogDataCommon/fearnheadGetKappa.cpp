@@ -6,6 +6,7 @@ namespace wellLogData
 	{
 		int lowerBound = 0, upperBound = (int)size-1;
 		double lowerBoundSum = 0;
+		const double tolerance = 1e-8;
 		while(getWeight(lowerBound) != getWeight(upperBound))
 		{
 			//Split the existing partition between currentIndex and currentIndex2
@@ -21,7 +22,7 @@ namespace wellLogData
 					B += getWeight(i);
 					A--;
 				}
-				if(B / partitionWeight1 + A <= N)
+				if(B / partitionWeight1 + A <= N + tolerance)
 				{
 					upperBound = currentIndex1;
 				}
@@ -29,6 +30,7 @@ namespace wellLogData
 				{
 					lowerBoundSum = B;
 					lowerBound = (int)size - A;
+					if(A == 0) goto skipCheck;
 				}
 			}
 			else
@@ -48,32 +50,41 @@ namespace wellLogData
 					A2--;
 				}
 				//We've found the minimum
-				if(B1 / partitionWeight1 + A1 > N && B2 / partitionWeight2 + A2 <= N)
+				if(B1 / partitionWeight1 + A1 > N + tolerance && B2 / partitionWeight2 + A2 <= N + tolerance)
 				{
 					upperBound = lowerBound = currentIndex2;
 					B = B2;
 					A = A2;
-					break;
+					goto skipCheck;
 				}
 				//Take the smaller half
-				else if(B1 / partitionWeight1 + A1 <= N)
+				else if(B1 / partitionWeight1 + A1 <= N + tolerance)
 				{
 					upperBound = currentIndex1;
+					A = A1;
+					B = B1;
 				}
 				//Take the bigger half
 				else
 				{
 					lowerBound = currentIndex2;
 					lowerBoundSum = B1;
+					B = B2;
+					A = A2;
 				}
 			}
 		}
-		double partitionWeight = getWeight(lowerBound);
-		for(int i = lowerBound; getWeight(i) <= partitionWeight && i < (int)size; i++)
 		{
-			B += getWeight(i);
-			A--;
+			double partitionWeight = getWeight(lowerBound);
+			A = (int)size - lowerBound;
+			B = lowerBoundSum;
+			for(int i = lowerBound; getWeight(i) <= partitionWeight && i < (int)size; i++)
+			{
+				B += getWeight(i);
+				A--;
+			}
 		}
+skipCheck:
 		return getWeight(lowerBound);
 	}
 }
