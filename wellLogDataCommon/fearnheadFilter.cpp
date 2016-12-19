@@ -194,11 +194,13 @@ namespace wellLogData
 			for(int i = 0; i < (int)systematicIndices.size(); i++)
 			{
 				particles.push_back(childParticles[systematicIndices[i]]);
-				particles.back().weight = cInverse;
+				//The particle weight is reset to 1 here, because we want to avoid the weights going to zero. To do this we divide through by the smallest particle weight, which is cInverse. 
+				particles.back().weight = 1;
 			}
-			for(int i = startOfTakeAllStrata; i < (int)systematicIndices.size(); i++)
+			for(int i = startOfTakeAllStrata; i < (int)childParticles.size(); i++)
 			{
 				particles.push_back(childParticles[i]);
+				particles.back().weight *= c;;
 			}
 		}
 	}
