@@ -14,3 +14,4 @@ Collate:
    'onLoad.R'
    'basicFilter.R'
    'fearnheadFilter.R'
+   'withoutReplacement.R'

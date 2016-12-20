@@ -1,10 +1,9 @@
-#include "fearnheadFilter.h"
-#include "fearnheadGetKappa.h"
+#include "withoutReplacement.h"
 #include <boost/random/bernoulli_distribution.hpp>
-#include "systematicSampling.h"
+#include "sampfordDoublePrecision.h"
 namespace wellLogData
 {
-	struct fearnheadFilterParticle
+	struct withoutReplacementParticle
 	{
 	public:
 		//mean and variance of X_t
@@ -12,10 +11,10 @@ namespace wellLogData
 		std::vector<double> isOutlier, isChange;
 		std::size_t timeLastChange;
 		double weight;
-		fearnheadFilterParticle()
+		withoutReplacementParticle()
 			: mean(std::numeric_limits<double>::quiet_NaN()), variance(std::numeric_limits<double>::quiet_NaN()), timeLastChange(0), weight(std::numeric_limits<double>::quiet_NaN())
 		{}
-		fearnheadFilterParticle& operator=(fearnheadFilterParticle&& other)
+		withoutReplacementParticle& operator=(withoutReplacementParticle&& other)
 		{
 			mean = other.mean;
 			variance = other.variance;
@@ -24,18 +23,18 @@ namespace wellLogData
 			weight = other.weight;
 			return *this;
 		}
-		fearnheadFilterParticle(fearnheadFilterParticle&& other)
+		withoutReplacementParticle(withoutReplacementParticle&& other)
 			: mean(other.mean), variance(other.variance), isOutlier(std::move(other.isOutlier)), isChange(std::move(other.isChange)), weight(other.weight)
 		{}
-		fearnheadFilterParticle(const fearnheadFilterParticle& other)
+		withoutReplacementParticle(const withoutReplacementParticle& other)
 			: mean(other.mean), variance(other.variance), isOutlier(other.isOutlier), isChange(other.isChange), weight(other.weight)
 		{}
 	};
-	bool particleWeightSorter(const fearnheadFilterParticle& first, const fearnheadFilterParticle& second)
+	bool particleWeightSorter(const withoutReplacementParticle& first, const withoutReplacementParticle& second)
 	{
 		return first.weight < second.weight;
 	}
-	void fearnheadFilter(const context& contextObj, fearnheadFilterArgs& args)
+	void withoutReplacement(const context& contextObj, withoutReplacementArgs& args)
 	{
 		if(args.nParticles == 0)
 		{
@@ -44,6 +43,7 @@ namespace wellLogData
 
 		const std::vector<double>& data = contextObj.getData();
 
+		samplingDouble::sampfordFromParetoNaiveArgs samplingArgs;
 		args.changeProbabilities.clear();
 		args.outlierProbabilities.clear();
 		boost::random::bernoulli_distribution<> isOutlierDist(contextObj.getOutlierProbability()), isChangeDist(contextObj.getChangeProbability());
@@ -52,25 +52,29 @@ namespace wellLogData
 		std::vector<int> systematicIndices;
 
 		//Initial simulation
-		std::vector<fearnheadFilterParticle> particles, childParticles;
-		for(std::size_t i = 0; i < args.nParticles; i++)
+		std::vector<withoutReplacementParticle> particles, childParticles;
+		//Outier
 		{
-			fearnheadFilterParticle particle;
+			withoutReplacementParticle particle;
 			particle.isChange.resize(1, 1.0);
-			particle.isOutlier.resize(1, (double)isOutlierDist(args.randomSource));
+			particle.isOutlier.resize(1, 1.0);
 			particle.timeLastChange = 0;
 			particle.mean = contextObj.getMu();
 			particle.variance = contextObj.getSigmaSquared();
-			if(particle.isOutlier[0] != 0)
-			{
-				double tmp = (data[0] - contextObj.getNu());
-				particle.weight = contextObj.getOutlierProbability() * (1/contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-			}
-			else
-			{
-				double tmp = (data[0] - particle.mean);
-				particle.weight = (1 - contextObj.getOutlierProbability()) * (1/contextObj.getSigma()) * std::exp(-0.5 * tmp * tmp / particle.variance) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-			}
+			double tmp = (data[0] - contextObj.getNu());
+			particle.weight = contextObj.getOutlierProbability() * (1/contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+			particles.emplace_back(std::move(particle));
+		}
+		//Non outlier
+		{
+			withoutReplacementParticle particle;
+			particle.isChange.resize(1, 1.0);
+			particle.isOutlier.resize(1, 0.0);
+			particle.timeLastChange = 0;
+			particle.mean = contextObj.getMu();
+			particle.variance = contextObj.getSigmaSquared();
+			double tmp = (data[0] - particle.mean);
+			particle.weight = (1 - contextObj.getOutlierProbability()) * (1/contextObj.getSigma()) * std::exp(-0.5 * tmp * tmp / particle.variance) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 			particles.emplace_back(std::move(particle));
 		}
 		std::vector<double> changeSums, outlierSums;
@@ -83,9 +87,10 @@ namespace wellLogData
 			std::fill(changeSums.begin(), changeSums.end(), 0);
 			std::fill(outlierSums.begin(), outlierSums.end(), 0);
 			double sumWeights = 0, outlierSumWeights = 0, notOutlierSumWeights = 0;
+			samplingArgs.weights.clear();
 			for(std::size_t i = 0; i < particles.size(); i++)
 			{
-				fearnheadFilterParticle& currentParticle = particles[i];
+				withoutReplacementParticle& currentParticle = particles[i];
 #ifndef NDBEUG
 				if(currentParticle.isOutlier[time-1] != 0 && currentParticle.isOutlier[time-1] != 1) throw std::runtime_error("Internal error");
 #endif
@@ -99,7 +104,7 @@ namespace wellLogData
 				else notOutlierSumWeights += currentParticle.weight;
 				for(int j = 0; j < 2; j++)
 				{
-					fearnheadFilterParticle childParticle;
+					withoutReplacementParticle childParticle;
 					childParticle.weight = currentParticle.weight;
 
 					childParticle.isChange = currentParticle.isChange;
@@ -153,6 +158,7 @@ namespace wellLogData
 						double obsSd = sqrt(childParticle.variance + contextObj.getTau1Squared());
 						childParticle.weight *= (1/sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticle.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 					}
+					samplingArgs.weights.push_back(childParticle.weight);
 					childParticles.emplace_back(std::move(childParticle));
 				}
 			}
@@ -165,7 +171,7 @@ namespace wellLogData
 			{
 				double tmp = (data[time] - contextObj.getNu());
 				double changeOutlierWeight = (1/contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-				fearnheadFilterParticle changeOutlierParticle;
+				withoutReplacementParticle changeOutlierParticle;
 				changeOutlierParticle.weight = (outlierSumWeights * contextObj.getOutlierClusterProbability() + notOutlierSumWeights * contextObj.getOutlierProbability()) * contextObj.getChangeProbability() * changeOutlierWeight;
 				changeOutlierParticle.isChange = changeSums;
 				changeOutlierParticle.isChange.push_back(1.0);
@@ -176,6 +182,7 @@ namespace wellLogData
 				changeOutlierParticle.timeLastChange = time;
 				changeOutlierParticle.mean = contextObj.getMu();
 				changeOutlierParticle.variance = contextObj.getSigmaSquared();
+				samplingArgs.weights.push_back(changeOutlierParticle.weight);
 				childParticles.emplace_back(std::move(changeOutlierParticle));
 			}
 			//The *single* particle in the next generation corresponding to a change (but not an outlier)
@@ -183,7 +190,7 @@ namespace wellLogData
 				double tmp = (data[time] - contextObj.getMu());
 				double obsSd = sqrt(contextObj.getSigmaSquared() + contextObj.getTau1Squared());
 				double changeWeight = (1/obsSd) * std::exp(-0.5 * tmp * tmp / (contextObj.getSigmaSquared() + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-				fearnheadFilterParticle changeParticle;
+				withoutReplacementParticle changeParticle;
 				changeParticle.weight = (outlierSumWeights * (1 - contextObj.getOutlierClusterProbability()) + notOutlierSumWeights * (1 - contextObj.getOutlierProbability())) * contextObj.getChangeProbability() * changeWeight;
 
 				changeParticle.isChange = changeSums;
@@ -195,6 +202,7 @@ namespace wellLogData
 				changeParticle.timeLastChange = time;
 				changeParticle.mean = contextObj.getMu();
 				changeParticle.variance = contextObj.getSigmaSquared();
+				samplingArgs.weights.push_back(changeParticle.weight);
 				childParticles.emplace_back(std::move(changeParticle));
 			}
 			if(time == data.size()-1)
@@ -208,54 +216,20 @@ namespace wellLogData
 			}
 			else
 			{
-				//Resampling according to the method outlined in Fearnhead. 
-				//First identify the value of c
-
-				//Sort by increasing weighti
-				std::sort(childParticles.begin(), childParticles.end(), particleWeightSorter);
-				int A;
-				double B;
-				fearnheadGetKappa(childParticles.size(), [&childParticles](std::size_t i){ return childParticles[i].weight;}, args.randomSource, args.nParticles, A, B);
-				double c = ((int)args.nParticles - A) / B;
-#ifndef NDEBUG
-				double checkSum = 0, checkSum2 = 0;
-				for(std::vector<fearnheadFilterParticle>::iterator i = childParticles.begin(); i != childParticles.end(); i++)
-				{
-					checkSum += std::min(i->weight * c, 1.0);
-					checkSum2 += i->weight;
-				}
-				if(fabs(checkSum - args.nParticles) > 1e-6)
-				{
-					throw std::runtime_error("Internal error");
-				}
-#endif
-				double cInverse = 1/c;
-				//Work out where "set 1" starts
-				int startOfTakeAllStrata = 0;
-				while(startOfTakeAllStrata < (int)childParticles.size() && childParticles[startOfTakeAllStrata].weight < cInverse) startOfTakeAllStrata++;
-				int takeAllStrataSize = (int)childParticles.size() - startOfTakeAllStrata;
-
-				//The rest of the particles form "set 2"
-				systematicWeights.clear();
-				double setTwoSum = 0;
-				for(int i = 0; i < startOfTakeAllStrata; i++)
-				{
-					systematicWeights.push_back(childParticles[i].weight);
-					setTwoSum += childParticles[i].weight;
-				}
-				systematicIndices.clear();
-				sampling::systematicSamplingDouble(systematicWeights, setTwoSum / (args.nParticles - takeAllStrataSize), systematicIndices, args.randomSource);
+				samplingArgs.n = args.nParticles;
+				samplingArgs.indices.clear();
+				samplingDouble::sampfordFromParetoNaive(samplingArgs, args.randomSource);
 				particles.clear();
-				for(int i = 0; i < (int)systematicIndices.size(); i++)
+				double minimumNewWeight = std::numeric_limits<double>::infinity();
+				for(int i = 0; i < (int)samplingArgs.indices.size(); i++)
 				{
-					particles.emplace_back(std::move(childParticles[systematicIndices[i]]));
-					//The particle weight is reset to 1 here, because we want to avoid the weights going to zero. To do this we divide through by the smallest particle weight, which is cInverse. 
-					particles.back().weight = 1;
+					particles.emplace_back(childParticles[samplingArgs.indices[i]]);
+					particles.back().weight /= samplingArgs.rescaledWeights[samplingArgs.indices[i]];
+					minimumNewWeight = std::min(minimumNewWeight, particles.back().weight);
 				}
-				for(int i = startOfTakeAllStrata; i < (int)childParticles.size(); i++)
+				for(int i = 0; i < (int)args.nParticles; i++)
 				{
-					particles.emplace_back(std::move(childParticles[i]));
-					particles.back().weight *= c;
+					particles[i].weight /= minimumNewWeight;
 				}
 			}
 		}

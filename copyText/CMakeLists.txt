@@ -8,7 +8,7 @@ endif()
 
 if(BUILD_R_PACKAGE)
 	find_package(Rcpp REQUIRED)
-	set(RFiles R/onLoad.R R/basicFilter.R R/fearnheadFilter.R)
+	set(RFiles R/onLoad.R R/basicFilter.R R/fearnheadFilter.R R/withoutReplacement.R)
 	set(RTestFiles)
 	set(RPackageFiles DESCRIPTION NAMESPACE ${RFiles} ${RTestFiles})
 
