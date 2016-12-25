@@ -244,7 +244,7 @@ namespace wellLogData
 					setTwoSum += childParticles[i].weight;
 				}
 				systematicIndices.clear();
-				sampling::systematicSamplingDouble(systematicWeights, setTwoSum / (args.nParticles - takeAllStrataSize), systematicIndices, args.randomSource);
+				samplingDouble::systematicSamplingDouble(systematicWeights, setTwoSum / (args.nParticles - takeAllStrataSize), systematicIndices, args.randomSource);
 				particles.clear();
 				for(int i = 0; i < (int)systematicIndices.size(); i++)
 				{
