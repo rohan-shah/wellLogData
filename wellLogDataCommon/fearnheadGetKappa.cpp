@@ -10,7 +10,7 @@ namespace wellLogData
 		while(true)
 		{
 			//Split the existing partition between currentIndex and currentIndex2
-			int currentIndex = boost::random::uniform_int_distribution<>(lowerBound, upperBound-1)(randomSource);
+			int currentIndex = (lowerBound + upperBound - 1) / 2;
 			while(currentIndex <= upperBound - 1 && getWeight(currentIndex) == getWeight(currentIndex+1)) currentIndex++;
 			if(currentIndex == (int)size - 1)
 			{
