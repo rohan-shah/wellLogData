@@ -1,7 +1,7 @@
 #include "fearnheadFilter.h"
 #include "fearnheadGetKappa.h"
 #include <boost/random/bernoulli_distribution.hpp>
-#include "systematicSampling.h"
+#include "fearnheadSampling.h"
 namespace wellLogData
 {
 	struct fearnheadFilterParticle
@@ -48,9 +48,7 @@ namespace wellLogData
 		args.outlierProbabilities.clear();
 		boost::random::bernoulli_distribution<> isOutlierDist(contextObj.getOutlierProbability()), isChangeDist(contextObj.getChangeProbability());
 
-		std::vector<double> systematicWeights;
-		std::vector<int> systematicIndices;
-
+		samplingDouble::fearnheadSamplingArgs samplingArgs;
 		//Initial simulation
 		std::vector<fearnheadFilterParticle> particles, childParticles;
 		for(std::size_t i = 0; i < args.nParticles; i++)
@@ -209,53 +207,25 @@ namespace wellLogData
 			else
 			{
 				//Resampling according to the method outlined in Fearnhead. 
-				//First identify the value of c
+				samplingArgs.weights.clear();
+				for(int i = 0; i < (int)childParticles.size(); i++) samplingArgs.weights.push_back(childParticles[i].weight);
 
-				//Sort by increasing weighti
-				std::sort(childParticles.begin(), childParticles.end(), particleWeightSorter);
-				int A;
-				double B;
-				fearnheadGetKappa(childParticles.size(), [&childParticles](std::size_t i){ return childParticles[i].weight;}, args.randomSource, args.nParticles, A, B);
-				double c = ((int)args.nParticles - A) / B;
-#ifndef NDEBUG
-				double checkSum = 0, checkSum2 = 0;
-				for(std::vector<fearnheadFilterParticle>::iterator i = childParticles.begin(); i != childParticles.end(); i++)
-				{
-					checkSum += std::min(i->weight * c, 1.0);
-					checkSum2 += i->weight;
-				}
-				if(fabs(checkSum - args.nParticles) > 1e-6)
-				{
-					throw std::runtime_error("Internal error");
-				}
-#endif
-				double cInverse = 1/c;
-				//Work out where "set 1" starts
-				int startOfTakeAllStrata = 0;
-				while(startOfTakeAllStrata < (int)childParticles.size() && childParticles[startOfTakeAllStrata].weight < cInverse) startOfTakeAllStrata++;
-				int takeAllStrataSize = (int)childParticles.size() - startOfTakeAllStrata;
+				samplingArgs.n = args.nParticles;
+				samplingDouble::fearnheadSampling(samplingArgs, args.randomSource);
 
-				//The rest of the particles form "set 2"
-				systematicWeights.clear();
-				double setTwoSum = 0;
-				for(int i = 0; i < startOfTakeAllStrata; i++)
-				{
-					systematicWeights.push_back(childParticles[i].weight);
-					setTwoSum += childParticles[i].weight;
-				}
-				systematicIndices.clear();
-				samplingDouble::systematicSamplingDouble(systematicWeights, setTwoSum / (args.nParticles - takeAllStrataSize), systematicIndices, args.randomSource);
 				particles.clear();
-				for(int i = 0; i < (int)systematicIndices.size(); i++)
+				for(int i = 0; i < (int)samplingArgs.indices.size(); i++)
 				{
-					particles.emplace_back(std::move(childParticles[systematicIndices[i]]));
-					//The particle weight is reset to 1 here, because we want to avoid the weights going to zero. To do this we divide through by the smallest particle weight, which is cInverse. 
-					particles.back().weight = 1;
-				}
-				for(int i = startOfTakeAllStrata; i < (int)childParticles.size(); i++)
-				{
-					particles.emplace_back(std::move(childParticles[i]));
-					particles.back().weight *= c;
+					particles.emplace_back(std::move(childParticles[samplingArgs.indices[i]]));
+					//multiple all particle weights by c and divide by the inclusion probabilities
+					if(samplingArgs.deterministicInclusion[samplingArgs.indices[i]])
+					{
+						particles.back().weight *= samplingArgs.c;
+					}
+					else
+					{
+						particles.back().weight = 1;
+					}
 				}
 			}
 		}
