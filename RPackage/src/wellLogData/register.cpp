@@ -7,12 +7,15 @@
 #include "basicFilterRPackage.h"
 #include "fearnheadFilterRPackage.h"
 #include "withoutReplacementRPackage.h"
+#include "withoutReplacementWithVarianceRPackage.h"
+#include "conditionalPoissonSequential.h"
 extern "C" const char* package_name = "wellLogData";
 R_CallMethodDef callMethods[] = 
 {
 	{"basicFilter", (DL_FUNC)&basicFilter, 11},
 	{"fearnheadFilter", (DL_FUNC)&fearnheadFilter, 11},
 	{"withoutReplacement", (DL_FUNC)&withoutReplacement, 11},
+	{"withoutReplacementWithVariance", (DL_FUNC)&withoutReplacementWithVariance, 11},
 	{NULL, NULL, 0}
 };
 RcppExport void R_init_wellLogData(DllInfo *info)
@@ -35,4 +38,7 @@ RcppExport void R_init_wellLogData(DllInfo *info)
 #ifdef CUSTOM_STATIC_RCPP
 	init_Rcpp_cache();
 #endif
+
+	//Setup default precision
+	sampling::mpfr_class::default_precision(1024);
 }

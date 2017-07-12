@@ -15,3 +15,4 @@ Collate:
    'basicFilter.R'
    'fearnheadFilter.R'
    'withoutReplacement.R'
+   'withoutReplacementWithVariance.R'

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
-set(CppFiles register.cpp basicFilterRPackage.cpp fearnheadFilterRPackage.cpp withoutReplacementRPackage.cpp)
-set(HeaderFiles basicFilterRPackage.h fearnheadFilterRPackage.h withoutReplacementRPackage.h)
+set(CppFiles register.cpp basicFilterRPackage.cpp fearnheadFilterRPackage.cpp withoutReplacementRPackage.cpp withoutReplacementWithVarianceRPackage.cpp)
+set(HeaderFiles basicFilterRPackage.h fearnheadFilterRPackage.h withoutReplacementRPackage.h withoutReplacementWithVarianceRPackage.h)
 add_library(wellLogDataRPackage SHARED ${CppFiles} ${HeaderFiles})
 target_link_libraries(wellLogDataRPackage PUBLIC wellLogDataCommon Rcpp)
 set_target_properties(wellLogDataRPackage PROPERTIES OUTPUT_NAME "wellLogData")

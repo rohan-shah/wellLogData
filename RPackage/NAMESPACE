@@ -1,3 +1,4 @@
 export(basicFilter)
 export(fearnheadFilter)
 export(withoutReplacement)
+export(withoutReplacementWithVariance)
