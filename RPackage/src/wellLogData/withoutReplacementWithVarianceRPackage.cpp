@@ -153,6 +153,6 @@ BEGIN_RCPP
 	wellLogData::withoutReplacementWithVarianceArgs methodArgs(randomSource);
 	methodArgs.nParticles = nParticles;
 	wellLogData::withoutReplacementWithVariance(contextObj, methodArgs);
-	return Rcpp::List::create(Rcpp::Named("outlierProbabilities") = Rcpp::wrap(methodArgs.outlierProbabilities), Rcpp::Named("changeProbabilities") = Rcpp::wrap(methodArgs.changeProbabilities));
+	return Rcpp::List::create(Rcpp::Named("outlierProbabilities") = Rcpp::wrap(methodArgs.outlierProbabilities), Rcpp::Named("changeProbabilities") = Rcpp::wrap(methodArgs.changeProbabilities), Rcpp::Named("estimatedVariance") = Rcpp::wrap(methodArgs.estimatedVariances));
 END_RCPP
 }
