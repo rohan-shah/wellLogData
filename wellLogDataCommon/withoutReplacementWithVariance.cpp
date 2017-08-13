@@ -476,9 +476,7 @@ namespace wellLogData
 				}
 			}
 			sampling::mpfr_class totalCovarianceFromGraph = allCovariances[0](0, 0) + allCovariances[0](1, 0) + allCovariances[0](0, 1) + allCovariances[0](1, 1);
- 			sampling::mpfr_class estimatedVariance = totalCovarianceFromGraph / (normalisingConstant * normalisingConstant);
-			args.estimatedVariances.push_back(estimatedVariance.convert_to<double>());
-			args.numeratorVariances.push_back(totalCovarianceFromGraph.convert_to<double>());
+			args.changeEstimateNumeratorVariances.push_back(totalCovarianceFromGraph.convert_to<double>());
 			args.normalisingConstant = normalisingConstant.convert_to<double>();
 		}
 		//sampling::mpfr_class graphEstimate = (boost::get(boost::vertex_name, varianceEstimationGraph, 1).accumulatedMean * boost::get(boost::vertex_name, varianceEstimationGraph, 1).trueDensity + boost::get(boost::vertex_name, varianceEstimationGraph, 2).accumulatedMean * boost::get(boost::vertex_name, varianceEstimationGraph, 2).trueDensity) / normalisingConstant;
