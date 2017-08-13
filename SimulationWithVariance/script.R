@@ -1,6 +1,6 @@
 library(wellLogData)
 data <- read.table("../well.dat", skip = 7)
-n <- 1000
+n <- 10000
 if(file.exists("./results.RData"))
 {
 	load("./results.RData")

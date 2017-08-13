@@ -14,7 +14,8 @@ namespace wellLogData
 		boost::mt19937& randomSource;
 		std::size_t nParticles;
 		std::vector<double> outlierProbabilities, changeProbabilities;
-		std::vector<double> estimatedVariances;
+		std::vector<double> estimatedVariances, numeratorVariances;
+		double normalisingConstant;
 	};
 	void withoutReplacementWithVariance(const context& contextObj, withoutReplacementWithVarianceArgs& args);
 }
