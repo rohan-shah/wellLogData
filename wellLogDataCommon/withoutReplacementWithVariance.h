@@ -13,9 +13,11 @@ namespace wellLogData
 		{}
 		boost::mt19937& randomSource;
 		std::size_t nParticles;
-		std::vector<double> outlierProbabilities, changeProbabilities;
-		std::vector<double> changeEstimateNumeratorVariances;
-		double normalisingConstant;
+		std::vector<sampling::mpfr_class> outlierProbabilities, changeProbabilities;
+		std::vector<sampling::mpfr_class> changeEstimateNumeratorVariances, changeEstimateNumeratorSecondMoments;
+		std::vector<sampling::mpfr_class> changeProbabilitiesNumerators;
+		std::vector<sampling::mpfr_class> changeEstimateProductExpectations;
+		sampling::mpfr_class normalisingConstant;
 	};
 	void withoutReplacementWithVariance(const context& contextObj, withoutReplacementWithVarianceArgs& args);
 }

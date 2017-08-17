@@ -153,6 +153,26 @@ BEGIN_RCPP
 	wellLogData::withoutReplacementWithVarianceArgs methodArgs(randomSource);
 	methodArgs.nParticles = nParticles;
 	wellLogData::withoutReplacementWithVariance(contextObj, methodArgs);
-	return Rcpp::List::create(Rcpp::Named("outlierProbabilities") = Rcpp::wrap(methodArgs.outlierProbabilities), Rcpp::Named("changeProbabilities") = Rcpp::wrap(methodArgs.changeProbabilities), Rcpp::Named("changeEstimateNumeratorVariances") = Rcpp::wrap(methodArgs.changeEstimateNumeratorVariances), Rcpp::Named("normalisingConstant") = Rcpp::wrap(methodArgs.normalisingConstant));
+
+	auto mpfrToString = std::bind(std::mem_fn(&sampling::mpfr_class::str), std::placeholders::_1, 20, std::ios_base::scientific);
+
+	std::vector<std::string> changeProbabilitiesString(methodArgs.changeProbabilities.size());
+	std::transform(methodArgs.changeProbabilities.begin(), methodArgs.changeProbabilities.end(), changeProbabilitiesString.begin(), mpfrToString);
+
+	std::vector<std::string> outlierProbabilitiesString(methodArgs.outlierProbabilities.size());
+	std::transform(methodArgs.outlierProbabilities.begin(), methodArgs.outlierProbabilities.end(), outlierProbabilitiesString.begin(), mpfrToString);
+
+	std::vector<std::string> changeEstimateNumeratorVariancesString(methodArgs.changeEstimateNumeratorVariances.size());
+	std::transform(methodArgs.changeEstimateNumeratorVariances.begin(), methodArgs.changeEstimateNumeratorVariances.end(), changeEstimateNumeratorVariancesString.begin(), mpfrToString);
+
+	std::vector<std::string> changeProbabilitiesNumeratorsString(methodArgs.changeProbabilitiesNumerators.size());
+	std::transform(methodArgs.changeProbabilitiesNumerators.begin(), methodArgs.changeProbabilitiesNumerators.end(), changeProbabilitiesNumeratorsString.begin(), mpfrToString);
+
+	std::vector<std::string> changeEstimateNumeratorSecondMomentsString(methodArgs.changeEstimateNumeratorSecondMoments.size());
+	std::transform(methodArgs.changeEstimateNumeratorSecondMoments.begin(), methodArgs.changeEstimateNumeratorSecondMoments.end(), changeEstimateNumeratorSecondMomentsString.begin(), mpfrToString);
+
+	std::vector<std::string> changeEstimateProductExpectationsString(methodArgs.changeEstimateProductExpectations.size());
+	std::transform(methodArgs.changeEstimateProductExpectations.begin(), methodArgs.changeEstimateProductExpectations.end(), changeEstimateProductExpectationsString.begin(), mpfrToString);
+	return Rcpp::List::create(Rcpp::Named("outlierProbabilities") = Rcpp::wrap(outlierProbabilitiesString), Rcpp::Named("changeProbabilities") = Rcpp::wrap(changeProbabilitiesString), Rcpp::Named("changeEstimateNumeratorVariances") = Rcpp::wrap(changeEstimateNumeratorVariancesString), Rcpp::Named("normalisingConstant") = Rcpp::wrap(mpfrToString(methodArgs.normalisingConstant)), Rcpp::Named("changeEstimateNumerators") = Rcpp::wrap(changeProbabilitiesNumeratorsString), Rcpp::Named("changeEstimateNumeratorSecondMoments") = Rcpp::wrap(changeEstimateNumeratorSecondMomentsString), Rcpp::Named("changeEstimateProductExpectations") = Rcpp::wrap(changeEstimateProductExpectationsString));
 END_RCPP
 }

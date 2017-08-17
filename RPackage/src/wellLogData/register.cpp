@@ -40,5 +40,5 @@ RcppExport void R_init_wellLogData(DllInfo *info)
 #endif
 
 	//Setup default precision
-	sampling::mpfr_class::default_precision(1024);
+	sampling::mpfr_class::default_precision(512);
 }
