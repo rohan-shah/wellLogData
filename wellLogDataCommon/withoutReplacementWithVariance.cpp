@@ -385,6 +385,8 @@ namespace wellLogData
 			args.changeProbabilitiesNumerators.push_back(sumChange);
 			args.outlierProbabilities.push_back(sampling::mpfr_class(sumOutlier / normalisingConstant));
 		}
+		sampling::mpfr_class trueDensity1 = boost::get(boost::vertex_name, varianceEstimationGraph, 1).trueDensity;
+		sampling::mpfr_class trueDensity2 = boost::get(boost::vertex_name, varianceEstimationGraph, 2).trueDensity;
 		for(int timeForEstimate = 0; timeForEstimate < (int)data.size(); timeForEstimate++)
 		{
 			timeForEstimate = 15;
@@ -514,8 +516,6 @@ namespace wellLogData
 			}
 			sampling::mpfr_class totalCovarianceFromGraph = allCovariances[0](0, 0) + allCovariances[0](1, 0) + allCovariances[0](0, 1) + allCovariances[0](1, 1);
 			args.changeEstimateNumeratorVariances.push_back(totalCovarianceFromGraph);
-			sampling::mpfr_class trueDensity1 = boost::get(boost::vertex_name, varianceEstimationGraph, 1).trueDensity;
-			sampling::mpfr_class trueDensity2 = boost::get(boost::vertex_name, varianceEstimationGraph, 2).trueDensity;
 			sampling::mpfr_class secondMomentSum = allSecondMoments[0](0, 0) * trueDensity1 * trueDensity1 + 2 * allSecondMoments[0](1, 0) * trueDensity1 * trueDensity2 + allSecondMoments[0](1, 1) * trueDensity2 * trueDensity2;
 			args.changeEstimateNumeratorSecondMoments.push_back(secondMomentSum);
 			
@@ -523,6 +523,61 @@ namespace wellLogData
 			args.changeEstimateProductExpectations.push_back(productExpectation);
 			break;
 		}
+		//second moment normalising constant
+		std::vector<boost::numeric::ublas::matrix<sampling::mpfr_class> > secondMomentsNormalisingConstant(data.size());
+		secondMomentsNormalisingConstant[data.size()-1].resize(graphVertices[data.size()-1].size(), graphVertices[data.size()-1].size(), false);
+		std::fill(secondMomentsNormalisingConstant.back().data().begin(), secondMomentsNormalisingConstant.back().data().end(), 1);
+		for(int time = data.size() - 2; time >= 0; time--)
+		{
+			const std::vector<sampling::mpfr_class>& currentInclusionProbabilities = allInclusionProbabilities[time+1];
+			const boost::numeric::ublas::matrix<sampling::mpfr_class>& currentSecondOrderInclusionProbabilities = allSecondOrderInclusionProbabilities[time+1];
+
+			secondMomentsNormalisingConstant[time].resize(graphVertices[time].size(), graphVertices[time].size(), false);
+			boost::numeric::ublas::matrix<sampling::mpfr_class>& currentSecondMomentsNormalisingConstant = secondMomentsNormalisingConstant[time];
+			const boost::numeric::ublas::matrix<sampling::mpfr_class>& previousSecondMomentsNormalisingConstant = secondMomentsNormalisingConstant[time+1];
+			for(int particleCounter1 = 0; particleCounter1 < (int)graphVertices[time].size(); particleCounter1++)
+			{
+				int graphVertex1 = graphVertices[time][particleCounter1];
+				for(int particleCounter2 = 0; particleCounter2 < (int)graphVertices[time].size(); particleCounter2++)
+				{
+					int graphVertex2 = graphVertices[time][particleCounter2];
+					sampling::mpfr_class& currentSecondMomentNormalisingConstantValue = currentSecondMomentsNormalisingConstant(particleCounter1, particleCounter2);
+				
+					varianceGraph::out_edge_iterator current1, end1, current2, end2;
+					boost::tie(current1, end1) = boost::out_edges(graphVertex1, varianceEstimationGraph);
+					for(; current1 != end1; current1++)
+					{
+						int targetVertex1 = boost::target(*current1, varianceEstimationGraph);
+						varianceGraphVertex& targetVertexInfo1 = boost::get(boost::vertex_name, varianceEstimationGraph, targetVertex1);
+						if(targetVertexInfo1.indexWithinSelected != -1)
+						{
+							double multiple1 = boost::get(boost::edge_name, varianceEstimationGraph, *current1);
+							boost::tie(current2, end2) = boost::out_edges(graphVertex2, varianceEstimationGraph);
+							for(; current2 != end2; current2++)
+							{
+								int targetVertex2 = boost::target(*current2, varianceEstimationGraph);
+								varianceGraphVertex& targetVertexInfo2 = boost::get(boost::vertex_name, varianceEstimationGraph, targetVertex2);
+								if(targetVertexInfo2.indexWithinSelected != -1)
+								{
+									sampling::mpfr_class inclusionProduct = currentInclusionProbabilities[targetVertexInfo1.indexWithinDesign] * currentInclusionProbabilities[targetVertexInfo2.indexWithinDesign];
+									double multiple2 = boost::get(boost::edge_name, varianceEstimationGraph, *current2);
+									if(targetVertex1 == targetVertex2)
+									{
+										currentSecondMomentNormalisingConstantValue += (previousSecondMomentsNormalisingConstant(targetVertexInfo1.indexWithinSelected, targetVertexInfo2.indexWithinSelected) * multiple1 * multiple2) / inclusionProduct;
+									}
+									else
+									{
+										currentSecondMomentNormalisingConstantValue += (previousSecondMomentsNormalisingConstant(targetVertexInfo1.indexWithinSelected, targetVertexInfo2.indexWithinSelected) * multiple1 * multiple2) / currentSecondOrderInclusionProbabilities(targetVertexInfo1.indexWithinDesign, targetVertexInfo2.indexWithinDesign);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		sampling::mpfr_class secondMomentNormalisingConstant = secondMomentsNormalisingConstant[0](0, 0) * trueDensity1 * trueDensity1 + secondMomentsNormalisingConstant[0](1, 0) * trueDensity1 * trueDensity2 + secondMomentsNormalisingConstant[0](0, 1) * trueDensity1 * trueDensity2 + secondMomentsNormalisingConstant[0](1, 1) * trueDensity2 * trueDensity2;
+		args.secondMomentNormalisingConstant = secondMomentNormalisingConstant;
 		//sampling::mpfr_class graphEstimate = (boost::get(boost::vertex_name, varianceEstimationGraph, 1).accumulatedMean * boost::get(boost::vertex_name, varianceEstimationGraph, 1).trueDensity + boost::get(boost::vertex_name, varianceEstimationGraph, 2).accumulatedMean * boost::get(boost::vertex_name, varianceEstimationGraph, 2).trueDensity) / normalisingConstant;
 /*		{
 			std::ofstream file("graph.graphml");

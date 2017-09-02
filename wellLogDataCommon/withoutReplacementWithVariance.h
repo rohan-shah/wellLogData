@@ -17,7 +17,7 @@ namespace wellLogData
 		std::vector<sampling::mpfr_class> changeEstimateNumeratorVariances, changeEstimateNumeratorSecondMoments;
 		std::vector<sampling::mpfr_class> changeProbabilitiesNumerators;
 		std::vector<sampling::mpfr_class> changeEstimateProductExpectations;
-		sampling::mpfr_class normalisingConstant;
+		sampling::mpfr_class normalisingConstant, secondMomentNormalisingConstant;
 	};
 	void withoutReplacementWithVariance(const context& contextObj, withoutReplacementWithVarianceArgs& args);
 }
