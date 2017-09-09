@@ -5,51 +5,75 @@ normalisingConstant <- mean(do.call(c, lapply(results, function(x) x$normalising
 numerator <- mean(do.call(c, lapply(results, function(x) x$changeEstimateNumerators[16])))
 
 numerator / normalisingConstant
+
+groupSize <- 10
+indices <- split(seq_along(results), ceiling(seq_along(results) / groupSize))
+optionalTransform <- identity#as.numeric
+changeEstimateNumerators <- optionalTransform(do.call(c, lapply(results, function(x) x$changeEstimateNumerators[16])))
+normalisingConstant <- optionalTransform(do.call(c, lapply(results, function(x) x$normalisingConstant)))
+numeratorGroups <- do.call(c, lapply(indices, function(i)
+	{
+		mean(changeEstimateNumerators[i])
+	}))
+normalisingConstantGroups <- do.call(c, lapply(indices, function(i)
+	{
+		mean(normalisingConstant[i])
+	}))
 mean(numeratorGroups / normalisingConstantGroups)
 var(as.numeric(numeratorGroups / normalisingConstantGroups))
 
-#Ok, that didn't work. What about taking groups of 10 at a time?
-groupSize <- 10
-indices <- split(seq_along(results), ceiling(seq_along(results) / groupSize))
-empiricalVariances <- horvitzThompsonVariances <- vector(mode = "numeric", length = length(indices) - 1)
-for(sampleSize in 2:length(indices))
+empiricalVariances <- horvitzThompsonVariances <- horvitzThompsonVariances2 <- vector(mode = "numeric", length = length(indices) - 1)
+
+changeEstimateNumeratorSecondMoments <- optionalTransform(do.call(c, lapply(results, function(x) x$changeEstimateNumeratorSecondMoments)))
+secondMomentNormalisingConstant <- optionalTransform(do.call(c, lapply(results, function(x) x$secondMomentNormalisingConstant)))
+changeEstimateProductExpectations <- optionalTransform(do.call(c, lapply(results, function(x) x$changeEstimateProductExpectations)))
+changeEstimateNumeratorVariances <- optionalTransform(do.call(c, lapply(results, function(x) x$changeEstimateNumeratorVariances)))
+mean(changeEstimateNumeratorVariances / groupSize)
+var(as.numeric(numeratorGroups))
+
+for(sampleSize in c(2:10,length(indices)))#2:length(indices))
 {
 	numeratorGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
 		{
-			mean(do.call(c, lapply(results[i], function(x) x$changeEstimateNumerators[16])))
+			mean(changeEstimateNumerators[i])
+		}))
+	numeratorVarianceGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
+		{
+			return(mean(changeEstimateNumeratorVariances[i])/groupSize)
 		}))
 	secondMomentNumeratorGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
 		{
-			firstMoments <- do.call(c, lapply(results[i], function(x) x$changeEstimateNumerators[16]))
-			secondMoments <- do.call(c, lapply(results[i], function(x) x$changeEstimateNumeratorSecondMoments))
+			firstMoments <- changeEstimateNumerators[i]
+			secondMoments <- changeEstimateNumeratorSecondMoments[i]
 			m <- outer(firstMoments, firstMoments)
 			diag(m) <- secondMoments
 			return(sum(m) / (groupSize^2))
 		}))
 	normalisingConstantGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
 		{
-			mean(do.call(c, lapply(results[i], function(x) x$normalisingConstant)))
+			mean(normalisingConstant[i])
 		}))
 	secondMomentNormalisingConstantGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
 		{
-			firstMoments <- do.call(c, lapply(results[i], function(x) x$normalisingConstant))
-			secondMoments <- do.call(c, lapply(results[i], function(x) x$secondMomentNormalisingConstant))
+			firstMoments <- normalisingConstant[i]
+			secondMoments <- secondMomentNormalisingConstant[i]
 			m <- outer(firstMoments, firstMoments)
 			diag(m) <- secondMoments
 			return(sum(m) / (groupSize^2))
 		}))
 	productExpectationGroups <- do.call(c, lapply(indices[1:sampleSize], function(i)
 		{
-			normalisingConstants <- do.call(c, lapply(results[i], function(x) x$normalisingConstant))
-			numerators <- do.call(c, lapply(results[i], function(x) x$changeEstimateNumerators[16]))
-			productTerms <- do.call(c, lapply(results[i], function(x) x$changeEstimateProductExpectations))
+			normalisingConstants <- normalisingConstant[i]
+			numerators <- changeEstimateNumerators[i]
+			productTerms <- changeEstimateProductExpectations[i]
 			m <- outer(numerators, normalisingConstants)
 			diag(m) <- productTerms
 			return(sum(m) / (groupSize^2))
 		}))
 	#The approximation
-	horvitzThompsonVariances[sampleSize-1] <- as.numeric((mean(secondMomentNumeratorGroups) * mean(normalisingConstantGroups)^2 - 2 * mean(productExpectationGroups) * mean(normalisingConstantGroups) * mean(numeratorGroups) + mean(secondMomentNormalisingConstantGroups) * mean(numeratorGroups)^2) / (mean(normalisingConstantGroups)^4))
+	horvitzThompsonVariances[sampleSize-1] <- as.numeric((mean(secondMomentNumeratorGroups) / (mean(numeratorGroups)^2) - (2 * mean(productExpectationGroups)/(mean(numeratorGroups) * mean(normalisingConstantGroups))) + mean(secondMomentNormalisingConstantGroups) / (mean(normalisingConstantGroups)^2)) * (mean(numeratorGroups)^2 / mean(normalisingConstantGroups)^2))
+	horvitzThompsonVariances2[sampleSize-1] <- as.numeric(((mean(numeratorVarianceGroups) / (mean(numeratorGroups)^2)) + 1 - (2 * mean(productExpectationGroups)/(mean(numeratorGroups) * mean(normalisingConstantGroups))) + mean(secondMomentNormalisingConstantGroups) / (mean(normalisingConstantGroups)^2)) * (mean(numeratorGroups)^2 / mean(normalisingConstantGroups)^2))
 	#The purely empirical 
-	empiricalVariances[sampleSize - 1] <- as.numeric((mean(numeratorGroups^2) * mean(normalisingConstantGroups)^2 - 2 * mean(numeratorGroups*normalisingConstantGroups) * mean(normalisingConstantGroups) * mean(numeratorGroups) + (mean(normalisingConstantGroups^2) * mean(numeratorGroups)^2))/ (mean(normalisingConstantGroups)^4))
+	empiricalVariances[sampleSize - 1] <- as.numeric((mean(numeratorGroups^2) / (mean(numeratorGroups)^2) - (2 * mean(numeratorGroups * normalisingConstantGroups)/(mean(numeratorGroups) * mean(normalisingConstantGroups))) + mean(normalisingConstantGroups^2) / (mean(normalisingConstantGroups)^2)) * (mean(numeratorGroups)^2 / mean(normalisingConstantGroups)^2))
 	cat("Done ", sampleSize - 1, " / ", length(indices) - 1, "\n", sep="")
 }

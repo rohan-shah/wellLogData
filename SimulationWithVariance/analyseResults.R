@@ -32,18 +32,3 @@ var(as.numeric(estimates))
 #Approximations to variance
 (secondMomentNumerator * normalisingConstant^2 - 2 * productExpectation * normalisingConstant * numerator + secondMomentNormalisingConstant * numerator^2) / (normalisingConstant^4)
 ((numerator / normalisingConstant)^2) * ((varNumerator / (numerator^2)) - 2 * (covarianceTerm / (normalisingConstant * numerator)) + (varNormalisingConstant / (normalisingConstant^2)))
-
-stepSize <- 10
-ends <- seq(stepSize, length(results), by = stepSize)
-normalisingConstantEmpiricalVariance <- normalisingConstantHorvitzThompsonVariance <- numeratorHorvitzThompsonVariance <- numeratorEmpiricalVariance <- vector(mode = "numeric", length = length(ends))
-secondMomentNormalisingConstants <- do.call(c, lapply(results, function(x) x$secondMomentNormalisingConstant))
-numeratorVariances <- do.call(c, lapply(results, function(x) x$changeEstimateNumeratorVariance))
-normalisingConstants <- do.call(c, lapply(results, function(x) x$normalisingConstant))
-numerators <- do.call(c, lapply(results, function(x) x$changeEstimateNumerators[16]))
-for(i in 1:length(ends))
-{
-	normalisingConstantEmpiricalVariance[i] <- var(as.numeric(normalisingConstants[1:ends[i]]))
-	numeratorEmpiricalVariance[i] <- var(as.numeric(numerators[1:ends[i]]))
-	normalisingConstantHorvitzThompsonVariance[i] <- as.numeric(mean(secondMomentNormalisingConstants[1:ends[i]]) - mean(normalisingConstants[1:ends[i]])^2)
-	numeratorHorvitzThompsonVariance[i] <- as.numeric(mean(numeratorVariances[1:ends[i]]))
-}
