@@ -10,6 +10,7 @@ target_compile_definitions(wellLogDataCommon PUBLIC BOOST_ALL_NO_LIB BOOST_ALL_D
 if(WIN32)
 	set_target_properties(wellLogDataCommon PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 	target_link_libraries(wellLogDataCommon PUBLIC mpir)
+	target_compile_definitions(wellLogDataCommon PUBLIC _USE_MATH_DEFINES)
 else()
 	if(NOT(CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
 		target_compile_features(wellLogDataCommon PUBLIC cxx_rvalue_references)
