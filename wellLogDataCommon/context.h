@@ -40,5 +40,5 @@ namespace wellLogData
 		context(const context&);
 	};
 }
-#undef DOUBLE_NANi
+#undef DOUBLE_NAN
 #endif

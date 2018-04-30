@@ -51,11 +51,11 @@ namespace wellLogData
 		samplingDouble::fearnheadSamplingArgs samplingArgs;
 		//Initial simulation
 		std::vector<fearnheadFilterParticle> particles, childParticles;
-		for(std::size_t i = 0; i < args.nParticles; i++)
+		for(std::size_t i = 0; i < 2; i++)
 		{
 			fearnheadFilterParticle particle;
 			particle.isChange.resize(1, 1.0);
-			particle.isOutlier.resize(1, (double)isOutlierDist(args.randomSource));
+			particle.isOutlier.resize(1, (double)i);
 			particle.timeLastChange = 0;
 			particle.mean = contextObj.getMu();
 			particle.variance = contextObj.getSigmaSquared();
@@ -130,7 +130,7 @@ namespace wellLogData
 					}
 					childParticle.timeLastChange = currentParticle.timeLastChange;
 					childParticle.weight *= (1 - contextObj.getChangeProbability());
-					if(j % 2)
+					if(childParticle.isOutlier[time-1] > 0.0)
 					{
 						childParticle.mean = currentParticle.mean;
 						childParticle.variance = currentParticle.variance;

@@ -100,7 +100,9 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 	endif()
 	message(STATUS "Generating import library for R.dll - done")
 
-	add_definitions(-Dsnprintf=_snprintf)
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.0")
+		add_definitions(-Dsnprintf=_snprintf)
+	endif()
 endif()
 
 #Ok, configuration is mostly done. Now actually building the shared library

@@ -137,7 +137,7 @@ namespace wellLogData
 					}
 					childParticle.timeLastChange = currentParticle.timeLastChange;
 					childParticle.weight *= (1 - contextObj.getChangeProbability());
-					if(j % 2)
+					if(childParticle.isOutlier[time-1] > 0.0)
 					{
 						childParticle.mean = currentParticle.mean;
 						childParticle.variance = currentParticle.variance;

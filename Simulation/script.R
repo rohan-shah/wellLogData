@@ -1,6 +1,6 @@
 library(wellLogData)
 nreps <- 1000
-wellData <- read.table("~/Software/wellLogData/well.dat", row.names=NULL, colClasses = "numeric")
+wellData <- read.table("../well.dat", row.names=NULL, colClasses = "numeric")
 if(file.exists("./tmp.RData"))
 {
 	load("./tmp.RData")
