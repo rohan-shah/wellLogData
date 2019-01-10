@@ -16,19 +16,6 @@ namespace wellLogData
 		fearnheadFilterOptimisedParticle()
 			: mean(std::numeric_limits<double>::quiet_NaN()), variance(std::numeric_limits<double>::quiet_NaN()), timeLastChange(0), weight(std::numeric_limits<double>::quiet_NaN())
 		{}
-		fearnheadFilterOptimisedParticle& operator=(fearnheadFilterOptimisedParticle&& other)
-		{
-			mean = other.mean;
-			variance = other.variance;
-			weight = other.weight;
-			return *this;
-		}
-		fearnheadFilterOptimisedParticle(fearnheadFilterOptimisedParticle&& other)
-			: mean(other.mean), variance(other.variance), weight(other.weight)
-		{}
-		fearnheadFilterOptimisedParticle(const fearnheadFilterOptimisedParticle& other)
-			: mean(other.mean), variance(other.variance), weight(other.weight)
-		{}
 	};
 	bool particleWeightSorter(const fearnheadFilterOptimisedParticle& first, const fearnheadFilterOptimisedParticle& second)
 	{
@@ -43,9 +30,9 @@ namespace wellLogData
 
 		const std::vector<double>& data = contextObj.getData();
 
-        typedef boost::numeric::ublas::matrix<double, boost::numeric::ublas::row_major> probabilityMatrix;
-        probabilityMatrix changeProbabilities(2*args.nParticles + 2, data.size()), outlierProbabilities(2 * args.nParticles + 2, data.size());
-        probabilityMatrix changeProbabilitiesPossibilities(2 * args.nParticles + 2, data.size()), outlierProbabilitiesPossibilities(2 * args.nParticles + 2, data.size());
+		typedef boost::numeric::ublas::matrix<double, boost::numeric::ublas::row_major> probabilityMatrix;
+		probabilityMatrix changeProbabilities(2*args.nParticles + 2, data.size()), outlierProbabilities(2 * args.nParticles + 2, data.size());
+		probabilityMatrix changeProbabilitiesPossibilities(2 * args.nParticles + 2, data.size()), outlierProbabilitiesPossibilities(2 * args.nParticles + 2, data.size());
 		args.changeProbabilities.clear();
 		args.outlierProbabilities.clear();
 		boost::random::bernoulli_distribution<> isOutlierDist(contextObj.getOutlierProbability()), isChangeDist(contextObj.getChangeProbability());
@@ -56,8 +43,8 @@ namespace wellLogData
 		for(std::size_t i = 0; i < 2; i++)
 		{
 			fearnheadFilterOptimisedParticle particle;
-            changeProbabilities(i, 0) = 1.0;
-            outlierProbabilities(i, 0) = (double)i;
+			changeProbabilities(i, 0) = 1.0;
+			outlierProbabilities(i, 0) = (double)i;
 			particle.timeLastChange = 0;
 			particle.mean = contextObj.getMu();
 			particle.variance = contextObj.getSigmaSquared();
@@ -74,7 +61,7 @@ namespace wellLogData
 			particles.emplace_back(std::move(particle));
 		}
 		std::vector<double> changeSums, outlierSums;
-		for(std::size_t time = 1; time < data.size(); time++)
+		for (std::size_t time = 1; time < data.size(); time++)
 		{
 			//For each particle, make four successors
 			childParticles.clear();
@@ -83,83 +70,92 @@ namespace wellLogData
 			std::fill(changeSums.begin(), changeSums.end(), 0);
 			std::fill(outlierSums.begin(), outlierSums.end(), 0);
 			double sumWeights = 0, outlierSumWeights = 0, notOutlierSumWeights = 0;
-			for(std::size_t i = 0; i < particles.size(); i++)
+			for (std::size_t i = 0; i < particles.size(); i++)
 			{
 				fearnheadFilterOptimisedParticle& currentParticle = particles[i];
-                auto currentOutlierRow = boost::numeric::ublas::row(outlierProbabilities, i);
-                auto currentChangeRow = boost::numeric::ublas::row(changeProbabilities, i);
+				auto currentOutlierRow = boost::numeric::ublas::row(outlierProbabilities, i);
+				auto currentChangeRow = boost::numeric::ublas::row(changeProbabilities, i);
 #ifndef NDBEUG
-				if(currentOutlierRow(time-1) != 0 && currentOutlierRow(time-1) != 1) throw std::runtime_error("Internal error");
+				if (currentOutlierRow(time - 1) != 0 && currentOutlierRow(time - 1) != 1) throw std::runtime_error("Internal error");
 #endif
-				for(std::size_t time2 = 0; time2 < time; time2++)
+				for (std::size_t time2 = 0; time2 < time; time2++)
 				{
 					outlierSums[time2] += currentOutlierRow(time2) * currentParticle.weight;
 					changeSums[time2] += currentChangeRow(time2) * currentParticle.weight;
 				}
 				sumWeights += currentParticle.weight;
-				if(currentOutlierRow(time-1) > 0) outlierSumWeights += currentParticle.weight;
+				if (currentOutlierRow(time - 1) > 0) outlierSumWeights += currentParticle.weight;
 				else notOutlierSumWeights += currentParticle.weight;
-				for(int j = 0; j < 2; j++)
+
+				fearnheadFilterOptimisedParticle childParticleOutlier, childParticleNotOutlier;
 				{
-					fearnheadFilterOptimisedParticle childParticle;
-					childParticle.weight = currentParticle.weight;
+					childParticleNotOutlier.weight = currentParticle.weight;
 
-                    auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * i + j);
-                    auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * i + j);
+					auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * i + 1);
+					auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * i + 1);
 
-                    std::copy(currentChangeRow.begin(), currentChangeRow.begin() + time, destChangeRow.begin());
-					destChangeRow(time) = 0.0;
+					std::copy(currentChangeRow.begin(), currentChangeRow.begin() + time, destChangeRow.begin());
+					std::copy(currentOutlierRow.begin(), currentOutlierRow.begin() + time, destOutlierRow.begin());
 
-                    std::copy(currentOutlierRow.begin(), currentOutlierRow.begin() + time, destOutlierRow.begin());
-                    destOutlierRow(time) = (double)(j % 2);
-
-					if(currentOutlierRow(time-1) > 0)
+					if (currentOutlierRow(time - 1) > 0)
 					{
-						if(j % 2)
-						{
-							childParticle.weight *= contextObj.getOutlierClusterProbability();
-						}
-						else
-						{
-							childParticle.weight *= (1 - contextObj.getOutlierClusterProbability());
-						}
+						childParticleNotOutlier.weight *= (1 - contextObj.getOutlierClusterProbability());
 					}
 					else
 					{
-						if(j % 2)
-						{
-							childParticle.weight *= contextObj.getOutlierProbability();
-						}
-						else
-						{
-							childParticle.weight *= (1 - contextObj.getOutlierProbability());
-						}
+						childParticleNotOutlier.weight *= (1 - contextObj.getOutlierProbability());
 					}
-					childParticle.timeLastChange = currentParticle.timeLastChange;
-					childParticle.weight *= (1 - contextObj.getChangeProbability());
-					if(destOutlierRow(time-1) > 0.0)
+					childParticleNotOutlier.timeLastChange = currentParticle.timeLastChange;
+					childParticleNotOutlier.weight *= (1 - contextObj.getChangeProbability());
+					if (destOutlierRow(time - 1) > 0.0)
 					{
-						childParticle.mean = currentParticle.mean;
-						childParticle.variance = currentParticle.variance;
+						childParticleNotOutlier.mean = currentParticle.mean;
+						childParticleNotOutlier.variance = currentParticle.variance;
 					}
 					else
 					{
-						childParticle.mean = ((currentParticle.mean / currentParticle.variance) + (data[time-1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
-						childParticle.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+						childParticleNotOutlier.mean = ((currentParticle.mean / currentParticle.variance) + (data[time - 1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+						childParticleNotOutlier.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
 					}
-					if(destOutlierRow(time))
-					{
-						double tmp = data[time] - contextObj.getNu();
-						childParticle.weight *= (1/contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-					}
-					else
-					{
-						double tmp = data[time] - childParticle.mean;
-						double obsSd = sqrt(childParticle.variance + contextObj.getTau1Squared());
-						childParticle.weight *= (1/sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticle.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-					}
-					childParticles.emplace_back(std::move(childParticle));
+					double tmp = data[time] - childParticleNotOutlier.mean;
+					double obsSd = sqrt(childParticleNotOutlier.variance + contextObj.getTau1Squared());
+					childParticleNotOutlier.weight *= (1 / sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticleNotOutlier.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 				}
+				{
+					childParticleOutlier.weight = currentParticle.weight;
+
+					auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * i + 0);
+					auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * i + 0);
+
+					std::copy(currentChangeRow.begin(), currentChangeRow.begin() + time, destChangeRow.begin());
+					std::copy(currentOutlierRow.begin(), currentOutlierRow.begin() + time, destOutlierRow.begin());
+					destOutlierRow(time) = 1.0;
+
+					if (currentOutlierRow(time - 1) > 0)
+					{
+						childParticleOutlier.weight *= contextObj.getOutlierClusterProbability();
+					}
+					else
+					{
+						childParticleOutlier.weight *= contextObj.getOutlierProbability();
+					}
+					childParticleOutlier.timeLastChange = currentParticle.timeLastChange;
+					childParticleOutlier.weight *= (1 - contextObj.getChangeProbability());
+					if (destOutlierRow(time - 1) > 0.0)
+					{
+						childParticleOutlier.mean = currentParticle.mean;
+						childParticleOutlier.variance = currentParticle.variance;
+					}
+					else
+					{
+						childParticleOutlier.mean = ((currentParticle.mean / currentParticle.variance) + (data[time - 1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+						childParticleOutlier.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+					}
+					double tmp = data[time] - contextObj.getNu();
+					childParticleOutlier.weight *= (1 / contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+				}
+				childParticles.emplace_back(std::move(childParticleOutlier));
+				childParticles.emplace_back(std::move(childParticleNotOutlier));
 			}
 			for(std::size_t time2 = 0; time2 < time; time2++)
 			{
@@ -173,14 +169,14 @@ namespace wellLogData
 				fearnheadFilterOptimisedParticle changeOutlierParticle;
 				changeOutlierParticle.weight = (outlierSumWeights * contextObj.getOutlierClusterProbability() + notOutlierSumWeights * contextObj.getOutlierProbability()) * contextObj.getChangeProbability() * changeOutlierWeight;
 
-                auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * particles.size());
-                auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * particles.size());
+				auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * particles.size());
+				auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * particles.size());
 
-                std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
-                destChangeRow(time) = 1.0;
+				std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
+				destChangeRow(time) = 1.0;
 
-                std::copy(outlierSums.begin(), outlierSums.end(), destOutlierRow.begin());
-                destOutlierRow(time) = 1.0;
+				std::copy(outlierSums.begin(), outlierSums.end(), destOutlierRow.begin());
+				destOutlierRow(time) = 1.0;
 
 				changeOutlierParticle.timeLastChange = time;
 				changeOutlierParticle.mean = contextObj.getMu();
@@ -195,14 +191,14 @@ namespace wellLogData
 				fearnheadFilterOptimisedParticle changeParticle;
 				changeParticle.weight = (outlierSumWeights * (1 - contextObj.getOutlierClusterProbability()) + notOutlierSumWeights * (1 - contextObj.getOutlierProbability())) * contextObj.getChangeProbability() * changeWeight;
 
-                auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * particles.size() + 1);
-                auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * particles.size() + 1);
+				auto destChangeRow = boost::numeric::ublas::row(changeProbabilitiesPossibilities, 2 * particles.size() + 1);
+				auto destOutlierRow = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, 2 * particles.size() + 1);
 
-                std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
-                destChangeRow(time) = 1.0;
+				std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
+				destChangeRow(time) = 1.0;
 
-                std::copy(outlierSums.begin(), outlierSums.end(), destOutlierRow.begin());
-                destOutlierRow(time) = 0.0;
+				std::copy(outlierSums.begin(), outlierSums.end(), destOutlierRow.begin());
+				destOutlierRow(time) = 0.0;
 
 				changeParticle.timeLastChange = time;
 				changeParticle.mean = contextObj.getMu();
@@ -212,15 +208,15 @@ namespace wellLogData
 			if(time == data.size()-1)
 			{
 				particles.swap(childParticles);
-                changeProbabilities.swap(changeProbabilitiesPossibilities);
-                outlierProbabilities.swap(outlierProbabilitiesPossibilities);
+				changeProbabilities.swap(changeProbabilitiesPossibilities);
+				outlierProbabilities.swap(outlierProbabilitiesPossibilities);
 				break;
 			}
 			if(childParticles.size() <= args.nParticles)
 			{
 				particles.swap(childParticles);
-                changeProbabilities.swap(changeProbabilitiesPossibilities);
-                outlierProbabilities.swap(outlierProbabilitiesPossibilities);
+				changeProbabilities.swap(changeProbabilitiesPossibilities);
+				outlierProbabilities.swap(outlierProbabilitiesPossibilities);
 			}
 			else
 			{
@@ -234,16 +230,16 @@ namespace wellLogData
 				particles.clear();
 				for(int i = 0; i < (int)samplingArgs.indices.size(); i++)
 				{
-                    int childIndex = samplingArgs.indices[i];
+					int childIndex = samplingArgs.indices[i];
 					particles.emplace_back(std::move(childParticles[childIndex]));
-                    
-                    auto sourceChange = boost::numeric::ublas::row(changeProbabilitiesPossibilities, childIndex);
-                    auto destChange = boost::numeric::ublas::row(changeProbabilities, i);
-                    std::copy(sourceChange.begin(), sourceChange.end(), destChange.begin());
+					
+					auto sourceChange = boost::numeric::ublas::row(changeProbabilitiesPossibilities, childIndex);
+					auto destChange = boost::numeric::ublas::row(changeProbabilities, i);
+					std::copy(sourceChange.begin(), sourceChange.end(), destChange.begin());
 
-                    auto sourceOutlier = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, childIndex);
-                    auto destOutlier = boost::numeric::ublas::row(outlierProbabilities, i);
-                    std::copy(sourceOutlier.begin(), sourceOutlier.end(), destOutlier.begin());
+					auto sourceOutlier = boost::numeric::ublas::row(outlierProbabilitiesPossibilities, childIndex);
+					auto destOutlier = boost::numeric::ublas::row(outlierProbabilities, i);
+					std::copy(sourceOutlier.begin(), sourceOutlier.end(), destOutlier.begin());
 					//multiple all particle weights by c and divide by the inclusion probabilities
 					if(samplingArgs.deterministicInclusion[samplingArgs.indices[i]])
 					{
