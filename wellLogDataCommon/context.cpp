@@ -28,11 +28,11 @@ namespace wellLogData
 		}
 		tau2 = args.tau2;
 		tau2Squared = args.tau2 * args.tau2;
+		nu = args.nu;
 		if(nu != nu || nu == infty || nu == -infty)
 		{
 			throw std::runtime_error("Input nu must be a number");
 		}
-		nu = args.nu;
 		if(changeProb != changeProb || changeProb <= 0 || changeProb >= 1)
 		{
 			throw std::runtime_error("Input changeProb must be a probability");

@@ -242,7 +242,29 @@ namespace wellLogData
 				for(int i = 0; i < (int)childParticles.size(); i++) samplingArgs.weights.push_back(childParticles[i].weight);
 
 				samplingArgs.n = args.nParticles;
-				samplingDouble::fearnheadSampling(samplingArgs, args.randomSource);
+				try
+				{
+					samplingDouble::fearnheadSampling(samplingArgs, args.randomSource);
+				}
+				//the sampling can fail for numerical reasons. E.g. we're unable to get an accurate value for c / c^-1. In that case, assume we just sample the top 1000 particles. 
+				catch(std::runtime_error& e)
+				{
+					std::vector<std::pair<int, float> > sorted;
+					for(std::size_t i = 0; i < samplingArgs.weights.size(); i++)
+					{
+						sorted.push_back(std::make_pair((int)i, samplingArgs.weights[i]));
+					}
+					std::sort(sorted.begin(), sorted.end(), [](const std::pair<int, float>& first, const std::pair<int, float>& second)
+						{
+							return first.second > second.second;
+						});
+					samplingArgs.indices.clear();
+					for(int i = 0; i < (int)args.nParticles; i++)
+					{
+						samplingArgs.indices.push_back(sorted[i].first);
+					}
+					samplingArgs.c = 1 / sorted[0].second;
+				}
 
 				particles.clear();
 				for(int i = 0; i < (int)samplingArgs.indices.size(); i++)
