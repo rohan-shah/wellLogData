@@ -6,7 +6,7 @@
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 namespace wellLogData
 {
-    typedef float numericType;
+	typedef float numericType;
 	struct fearnheadFilterOptimisedParticle
 	{
 	public:
@@ -18,21 +18,21 @@ namespace wellLogData
 			: mean(std::numeric_limits<numericType>::quiet_NaN()), variance(std::numeric_limits<numericType>::quiet_NaN()), timeLastChange(0), weight(std::numeric_limits<numericType>::quiet_NaN())
 		{}
 	};
-    struct customMatrix : public std::vector < std::vector<numericType> >
-    {
-    public:
-        customMatrix(std::size_t nRow, std::size_t nCol)
-        {
-            for (std::size_t i = 0; i < nRow; i++)
-            {
-                this->emplace_back(std::vector<numericType>(nCol, 0));
-            }
-        }
-        numericType& operator()(std::size_t row, std::size_t col)
-        {
-            return this->operator[](row)[col];
-        }
-    };
+	struct customMatrix : public std::vector < std::vector<numericType> >
+	{
+	public:
+		customMatrix(std::size_t nRow, std::size_t nCol)
+		{
+			for (std::size_t i = 0; i < nRow; i++)
+			{
+				this->emplace_back(std::vector<numericType>(nCol, 0));
+			}
+		}
+		numericType& operator()(std::size_t row, std::size_t col)
+		{
+			return this->operator[](row)[col];
+		}
+	};
 	bool particleWeightSorter(const fearnheadFilterOptimisedParticle& first, const fearnheadFilterOptimisedParticle& second)
 	{
 		return first.weight < second.weight;
@@ -45,9 +45,9 @@ namespace wellLogData
 		}
 
 		const std::vector<double>& originalData = contextObj.getData();
-        std::vector<float> data(originalData.begin(), originalData.end());
+		std::vector<float> data(originalData.begin(), originalData.end());
 
-        typedef customMatrix probabilityMatrix;
+		typedef customMatrix probabilityMatrix;
 		probabilityMatrix changeProbabilities(2*args.nParticles + 2, data.size()), outlierProbabilities(2 * args.nParticles + 2, data.size());
 		probabilityMatrix changeProbabilitiesPossibilities(2 * args.nParticles + 2, data.size()), outlierProbabilitiesPossibilities(2 * args.nParticles + 2, data.size());
 		args.changeProbabilities.clear();
@@ -90,8 +90,8 @@ namespace wellLogData
 			for (std::size_t i = 0; i < particles.size(); i++)
 			{
 				fearnheadFilterOptimisedParticle& currentParticle = particles[i];
-                std::vector<numericType>& currentOutlierRow = outlierProbabilities[i];
-                std::vector<numericType>& currentChangeRow = changeProbabilities[i];
+				std::vector<numericType>& currentOutlierRow = outlierProbabilities[i];
+				std::vector<numericType>& currentChangeRow = changeProbabilities[i];
 #ifndef NDBEUG
 				if (currentOutlierRow[time - 1] != 0 && currentOutlierRow[time - 1] != 1) throw std::runtime_error("Internal error");
 #endif
@@ -108,8 +108,8 @@ namespace wellLogData
 				{
 					childParticleOutlier.weight = currentParticle.weight;
 
-                    std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * i + 0];
-                    std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * i + 0];
+					std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * i + 0];
+					std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * i + 0];
 
 					std::copy(currentChangeRow.begin(), currentChangeRow.begin() + time, destChangeRow.begin());
 					std::copy(currentOutlierRow.begin(), currentOutlierRow.begin() + time, destOutlierRow.begin());
@@ -138,41 +138,45 @@ namespace wellLogData
 					numericType tmp = data[time] - contextObj.getNu();
 					childParticleOutlier.weight *= (1 / contextObj.getTau2()) * std::exp(-0.5 * tmp * tmp / contextObj.getTau2Squared()) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
 				}
-                {
-                    childParticleNotOutlier.weight = currentParticle.weight;
+				{
+					childParticleNotOutlier.weight = currentParticle.weight;
 
-                    std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * i + 1];
-                    std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * i + 1];
+					std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * i + 1];
+					std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * i + 1];
 
-                    destChangeRow.swap(currentChangeRow);
-                    destOutlierRow.swap(currentOutlierRow);
+					destChangeRow.swap(currentChangeRow);
+					destOutlierRow.swap(currentOutlierRow);
 
-                    if (currentOutlierRow[time - 1] > 0)
-                    {
-                        childParticleNotOutlier.weight *= (1 - contextObj.getOutlierClusterProbability());
-                    }
-                    else
-                    {
-                        childParticleNotOutlier.weight *= (1 - contextObj.getOutlierProbability());
-                    }
-                    childParticleNotOutlier.timeLastChange = currentParticle.timeLastChange;
-                    childParticleNotOutlier.weight *= (1 - contextObj.getChangeProbability());
-                    if (destOutlierRow[time - 1] > 0.0)
-                    {
-                        childParticleNotOutlier.mean = currentParticle.mean;
-                        childParticleNotOutlier.variance = currentParticle.variance;
-                    }
-                    else
-                    {
-                        childParticleNotOutlier.mean = ((currentParticle.mean / currentParticle.variance) + (data[time - 1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
-                        childParticleNotOutlier.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
-                    }
-                    numericType tmp = data[time] - childParticleNotOutlier.mean;
-                    numericType obsSd = sqrt(childParticleNotOutlier.variance + contextObj.getTau1Squared());
-                    childParticleNotOutlier.weight *= (1 / sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticleNotOutlier.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
-                }
-                childParticles.emplace_back(std::move(childParticleOutlier));
+					if (currentOutlierRow[time - 1] > 0)
+					{
+						childParticleNotOutlier.weight *= (1 - contextObj.getOutlierClusterProbability());
+					}
+					else
+					{
+						childParticleNotOutlier.weight *= (1 - contextObj.getOutlierProbability());
+					}
+					childParticleNotOutlier.timeLastChange = currentParticle.timeLastChange;
+					childParticleNotOutlier.weight *= (1 - contextObj.getChangeProbability());
+					if (destOutlierRow[time - 1] > 0.0)
+					{
+						childParticleNotOutlier.mean = currentParticle.mean;
+						childParticleNotOutlier.variance = currentParticle.variance;
+					}
+					else
+					{
+						childParticleNotOutlier.mean = ((currentParticle.mean / currentParticle.variance) + (data[time - 1] / contextObj.getTau1Squared())) / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+						childParticleNotOutlier.variance = 1 / ((1 / currentParticle.variance) + (1 / contextObj.getTau1Squared()));
+					}
+					numericType tmp = data[time] - childParticleNotOutlier.mean;
+					numericType obsSd = sqrt(childParticleNotOutlier.variance + contextObj.getTau1Squared());
+					childParticleNotOutlier.weight *= (1 / sqrt(obsSd)) * std::exp(-0.5 * tmp * tmp / (childParticleNotOutlier.variance + contextObj.getTau1Squared())) * /* 1/sqrt(2 * pi) */ M_SQRT1_2 * 0.5 * M_2_SQRTPI;
+				}
+				childParticles.emplace_back(std::move(childParticleOutlier));
 				childParticles.emplace_back(std::move(childParticleNotOutlier));
+			}
+			if(sumWeights == 0)
+			{
+				throw std::runtime_error("Internal error");
 			}
 			for(std::size_t time2 = 0; time2 < time; time2++)
 			{
@@ -186,8 +190,8 @@ namespace wellLogData
 				fearnheadFilterOptimisedParticle changeOutlierParticle;
 				changeOutlierParticle.weight = (outlierSumWeights * contextObj.getOutlierClusterProbability() + notOutlierSumWeights * contextObj.getOutlierProbability()) * contextObj.getChangeProbability() * changeOutlierWeight;
 
-                std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * particles.size()];
-                std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * particles.size()];
+				std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * particles.size()];
+				std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * particles.size()];
 
 				std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
 				destChangeRow[time] = 1.0;
@@ -208,8 +212,8 @@ namespace wellLogData
 				fearnheadFilterOptimisedParticle changeParticle;
 				changeParticle.weight = (outlierSumWeights * (1 - contextObj.getOutlierClusterProbability()) + notOutlierSumWeights * (1 - contextObj.getOutlierProbability())) * contextObj.getChangeProbability() * changeWeight;
 
-                std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * particles.size() + 1];
-                std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * particles.size() + 1];
+				std::vector<numericType>& destChangeRow = changeProbabilitiesPossibilities[2 * particles.size() + 1];
+				std::vector<numericType>& destOutlierRow = outlierProbabilitiesPossibilities[2 * particles.size() + 1];
 
 				std::copy(changeSums.begin(), changeSums.end(), destChangeRow.begin());
 				destChangeRow[time] = 1.0;
@@ -242,12 +246,21 @@ namespace wellLogData
 				for(int i = 0; i < (int)childParticles.size(); i++) samplingArgs.weights.push_back(childParticles[i].weight);
 
 				samplingArgs.n = args.nParticles;
+				bool successful = false;
 				try
 				{
 					samplingDouble::fearnheadSampling(samplingArgs, args.randomSource);
+					successful = true;
+				}
+				catch(...)
+				{
+				}
+				if(samplingArgs.c > 1e10)
+				{
+					successful = false;
 				}
 				//the sampling can fail for numerical reasons. E.g. we're unable to get an accurate value for c / c^-1. In that case, assume we just sample the top 1000 particles. 
-				catch(std::runtime_error& e)
+				if(!successful)
 				{
 					std::vector<std::pair<int, float> > sorted;
 					for(std::size_t i = 0; i < samplingArgs.weights.size(); i++)
@@ -264,6 +277,8 @@ namespace wellLogData
 						samplingArgs.indices.push_back(sorted[i].first);
 					}
 					samplingArgs.c = 1 / sorted[0].second;
+					samplingArgs.deterministicInclusion.resize(args.nParticles);
+					std::fill(samplingArgs.deterministicInclusion.begin(), samplingArgs.deterministicInclusion.end(), false);
 				}
 
 				particles.clear();
@@ -272,13 +287,13 @@ namespace wellLogData
 					int childIndex = samplingArgs.indices[i];
 					particles.emplace_back(std::move(childParticles[childIndex]));
 					
-                    std::vector<numericType>& sourceChange = changeProbabilitiesPossibilities[childIndex];
-                    std::vector<numericType>& destChange = changeProbabilities[i];
-                    destChange.swap(sourceChange);
+					std::vector<numericType>& sourceChange = changeProbabilitiesPossibilities[childIndex];
+					std::vector<numericType>& destChange = changeProbabilities[i];
+					destChange.swap(sourceChange);
 
-                    std::vector<numericType>& sourceOutlier = outlierProbabilitiesPossibilities[childIndex];
-                    std::vector<numericType>& destOutlier = outlierProbabilities[i];
-                    destOutlier.swap(sourceOutlier);
+					std::vector<numericType>& sourceOutlier = outlierProbabilitiesPossibilities[childIndex];
+					std::vector<numericType>& destOutlier = outlierProbabilities[i];
+					destOutlier.swap(sourceOutlier);
 					//multiple all particle weights by c and divide by the inclusion probabilities
 					if(samplingArgs.deterministicInclusion[samplingArgs.indices[i]])
 					{
